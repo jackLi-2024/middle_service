@@ -351,6 +351,13 @@ class RandomString():
         hashid = hashids_.encode(ts, num)
         return hashid
 
+    def get_md5(self, s):
+        m = hashlib.md5()
+        b = s.encode(encoding='utf-8')
+        m.update(b)
+        str_md5 = m.hexdigest()
+        return str_md5
+
 
 class MySQLCrud(SQL, MySQLDB, RandomString):
     conf = config.get("mysql", {})
