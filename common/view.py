@@ -70,6 +70,7 @@ class BaseApi():
         pass
 
     def entrance(self, info, **kwargs):
+        self.arguments = kwargs
         self.token_info = self.validate_token(info, **kwargs)
         self.prilivege_info = self.validate_privilege(self.token_info, **kwargs)
         return self.deal(self.token_info, self.prilivege_info, **kwargs)
