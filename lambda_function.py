@@ -35,7 +35,8 @@ def lambda_handler(event, context):
         logging.exception(str(result.errors))
         errors_list = []
         for error in result.errors:
-            if "Cannot query field" in str(error.message):
+
+            if "Cannot query field" in str(error):
                 message = "字段错误"
             # todo: 这里新增错误类型
             else:
@@ -65,6 +66,22 @@ def flask_handler():
         event = request.data.decode("utf8")
         event = json.loads(event)
         event["headers"] = request.headers
+        return jsonify(json.loads(lambda_handler(event, None).get("body")))
+
+    @app.route("/middle_service", methods=["POST"])
+    def replace_api():
+        event = {}
+        params = request.data.decode("utf8")
+        params = json.loads(params)
+        operationName = params.get("operationName")
+        params_str = json.dumps(params)
+        event["query"] = f"query {operationName}($condition:{operationName}_argument)" + "{" + \
+                         f"{operationName}(condition:$condition)" + "{ret}" \
+                         + "}"
+        event["variables"] = {"condition": {"args": params_str}}
+        event["operationName"] = operationName
+        event["headers"] = request.headers
+
         return jsonify(json.loads(lambda_handler(event, None).get("body")))
 
     app.add_url_rule('/graphql_doc_ui', view_func=GraphQLView.as_view('graphql',

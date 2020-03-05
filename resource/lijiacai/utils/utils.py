@@ -11,10 +11,11 @@ CopyRight@JackLee.com
 
 import os
 import random
+import re
 import sys
 import json
 import time
-
+import requests
 import pymysql
 import logging
 import configparser
@@ -373,7 +374,10 @@ class MySQLCrud(SQL, MySQLDB, RandomString):
     def run(self):
         try:
             data = self.dealer()
-            self.commit()
+            try:
+                self.commit()
+            except:
+                pass
             try:
                 self.close()
             except:
@@ -456,27 +460,62 @@ class NoneCrud(RandomString):
 
 
 class Business(TokenCrud):
+    backend_params = {
+        "url": "http://192.168.1.2:15001/graphql/",
+        "method": "post",
+        "headers": {"Content-Type": "application/json"}
+    }
+
+    # backend_params = {
+    #
+    # }
+
     class Argument:
         args = graphene.JSONString(description="json字符串作为参数:例如，{\"query\":\"xxx\",\"variables\":\"xxx\"}")
 
     class Return:
         ret = graphene.JSONString(description="json字符串作为返回值")
 
+    def validate_graphql_api(self, name):
+        try:
+            args = self.arguments.get("condition", {}).get("args", {})
+            graphql = args.get("query", args.get("mutation", ""))
+            pattern = re.compile(r"\(.+?\)")
+            graphql = pattern.sub("", graphql)
+            graphql = graphql.replace("query ", "").replace("mutation ", "")
+            api_name = graphql.split("{")[1].replace("↵", "").strip()
+            if api_name != name:
+                raise Exception("传入参数与接口不一致")
+        except Exception as e:
+            # logging.exception(str(e))
+            raise Exception("传入参数与接口不一致")
+
     def validate_token(self, info, **kwargs):
-        token = info.get("token", "")
-        if not token:
-            raise Exception("认证失败")
-        names = self.keys(pattern=r"*token:{}".format(token))
-        if names:
-            property_list = names[0].decode("utf8").split("_")
-            SECRET = str(self.get(names[0].decode("utf8")).decode("utf8"))
-            token_info = self.token_decode(token, SECRET)
-            return {"dec_data": token_info.get("data"), "user_id": token_info.get("user_id")}
-        else:
-            raise Exception("该token已失效")
+        # try:
+        #     token = info.context.get("headers").get("token", "")
+        # except:
+        #     token = info.context.headers.get("token", "")
+        # if not token:
+        #     raise Exception("ERROR认证参数为空")
+        # names = self.keys(pattern=r"*token:{}".format(token))
+        # if names:
+        #     property_list = names[0].decode("utf8").split("_")
+        #     SECRET = str(self.get(names[0].decode("utf8")).decode("utf8"))
+        #     token_info = self.token_decode(token, SECRET)
+        #     return {"dec_data": token_info.get("data"), "user_id": token_info.get("user_id")}
+        # else:
+        #     raise Exception("该token已失效")
+        pass
 
     def validate_privilege(self, token_info, **kwargs):
         pass
+
+    def backend_service(self):
+        try:
+            response = requests.request(**self.backend_params)
+            return response
+        except Exception as e:
+            raise Exception("请求后端异常：{}".format(str(e)))
 
 
 class Test(MySQLCrud):
